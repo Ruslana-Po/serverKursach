@@ -1,0 +1,34 @@
+services:
+  server:
+    build:
+      context: ./server  # Путь к папке с Dockerfile сервера
+    container_name: server
+    ports:
+      - "7432:7432"  # Проброс порта
+    restart: always
+    environment:
+      UID: ${UID:-100001}  # UID пользователя
+      GID: ${GID:-100001}  # GID пользователя
+    healthcheck:
+      test: ["CMD", "pgrep", "server"]  # Проверка работоспособности сервера
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - db
+
+  db:
+    image: postgres:17  # Используем актуальную версию PostgreSQL
+    container_name: kassa_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1251
+      POSTGRES_DB: kassa
+    ports:
+      - "5434:5432"  # Проброс порта для доступа к базе данных
+    volumes:
+      - db_data:/var/lib/postgresql/data  # Сохранение данных
+      - ./kassa_dump.sql:/docker-entrypoint-initdb.d/kassa_dump.sql  # Добавление дампа
+
+volumes:
+  db_data:  # Создание тома для хранения данных базы данных
