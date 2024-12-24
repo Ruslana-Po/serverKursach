@@ -1,5 +1,5 @@
 #include "header.h"
-
+mutex g_lock;
 void ErrorOrNo(int meaning){
     if(meaning<0){
         cout<<"Error\n";
@@ -33,6 +33,11 @@ string find(pqxx::connection& conn, int number, const string& command){
         // Поиск по названию
         else if (number == 4) {
             query = "SELECT p.*, pc.unique_code FROM Products p JOIN ProductCodes pc ON p.product_id = pc.product_id WHERE p.name ILIKE " + txn.quote('%' + command + '%');
+            res = txn.exec(query);
+        }
+         // Поиск по названию
+        else if (number == 7) {
+            query = "SELECT p.*, pc.unique_code FROM Products p JOIN ProductCodes pc ON p.product_id = pc.product_id WHERE p.name ILIKE " + txn.quote(command);
             res = txn.exec(query);
         }
 
@@ -153,8 +158,8 @@ string search(int number, string command){
     cout<<'\n'<<number<<" "<<command<<'\n';
     try {
         // Создание подключения к базе данных
-        pqxx::connection conn("dbname=kassa user=postgres password=1251 host=db port=5432");
-        if(number>=1&& number<=4){
+        pqxx::connection conn("dbname=kassa user=postgres password=1251 host=localhost port=5432");
+        if((number>=1&& number<=4)||number==7){
             result=find(conn, number, command);
         }else if(number==5){
             result=addCard(conn,command);
@@ -180,13 +185,13 @@ string search(int number, string command){
     //Новый код
     if(strlen(buffer)<3){
         string result="Ничего не найдено"+'\0';
-     //Обратно
-    for(size_t i=0; i< result.length();i++){
-        buffer[i]=result[i];
-    }
-    //Отправляет сообщение  
-    send(system, buffer, MAX_SIZE_BUF,0);
-    return;
+        //Обратно
+        for(size_t i=0; i< result.length();i++){
+            buffer[i]=result[i];
+        }
+        //Отправляет сообщение  
+        send(system, buffer, MAX_SIZE_BUF,0);
+        return;
     }
     int number = buffer[0]- '0';
     string str="";
@@ -200,6 +205,7 @@ string search(int number, string command){
     for(size_t i=0; i< result.length();i++){
         buffer[i]=result[i];
     }
+    cout<<buffer<<endl;
     //Отправляет сообщение  
     send(system, buffer, MAX_SIZE_BUF,0);
     
@@ -217,11 +223,10 @@ string search(int number, string command){
  //Связь с клиентом
  void Communication_With_Client(int server) {
     while (true) {
-        static mutex g_lock;
         try {
             char buffer[MAX_SIZE_BUF];
             AcceptTheMessage(server, buffer);
-            g_lock.lock();
+             g_lock.lock();
             cout<<"Client № "<<server-3<<" : "<<endl;
             cout << buffer << endl;
             cout << "Server : " << endl;
